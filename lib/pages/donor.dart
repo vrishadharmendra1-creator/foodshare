@@ -493,120 +493,126 @@ class _AddAvailabilityDialogState extends State<_AddAvailabilityDialog> {
       setState(() {
         _lat = result.latitude;
         _lng = result.longitude;
-        _locationController.text = '${result.latitude}, ${result.longitude}';
+        _locationController.text =
+            result.address ?? '${result.latitude}, ${result.longitude}';
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Post Surplus Food',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _Field(label: 'Food Type', controller: _foodTypeController),
-            const SizedBox(height: 16),
-            _Field(
-              label: 'Quantity',
-              controller: _quantityController,
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Pickup Location',
-              style: TextStyle(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            GestureDetector(
-              onTap: _pickLocation,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.map, color: Colors.grey[600]),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _locationController.text.isEmpty
-                            ? 'Tap to select on map'
-                            : _locationController.text,
-                        style: TextStyle(
-                          color: _locationController.text.isEmpty
-                              ? Colors.grey[600]
-                              : Colors.black87,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+    return SingleChildScrollView(
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Post Surplus Food',
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
               ),
-            ),
-            if (_showQuantityError) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
+              _Field(label: 'Food Type', controller: _foodTypeController),
+              const SizedBox(height: 16),
+              _Field(
+                label: 'Quantity',
+                controller: _quantityController,
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 16),
               const Text(
-                'Enter a quantity greater than 0',
-                style: TextStyle(color: Colors.red, fontSize: 12),
+                'Pickup Location',
+                style: TextStyle(fontWeight: FontWeight.w600),
               ),
-            ],
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final quantity = int.tryParse(_quantityController.text);
-                  final quantityValid = quantity != null && quantity > 0;
-                  setState(() => _showQuantityError = !quantityValid);
-                  if (_foodTypeController.text.isNotEmpty &&
-                      _locationController.text.isNotEmpty &&
-                      quantityValid) {
-                    await widget.onSubmit(
-                      _foodTypeController.text,
-                      quantity!,
-                      _locationController.text,
-                      _lat,
-                      _lng,
-                    );
-                    if (context.mounted) Navigator.pop(context);
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _donorGreen,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
+              const SizedBox(height: 8),
+              GestureDetector(
+                onTap: _pickLocation,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.map, color: Colors.grey[600]),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _locationController.text.isEmpty
+                              ? 'Tap to select on map'
+                              : _locationController.text,
+                          style: TextStyle(
+                            color: _locationController.text.isEmpty
+                                ? Colors.grey[600]
+                                : Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                child: const Text('Post Food', style: TextStyle(fontSize: 16)),
               ),
-            ),
-          ],
+              if (_showQuantityError) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Enter a quantity greater than 0',
+                  style: TextStyle(color: Colors.red, fontSize: 12),
+                ),
+              ],
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final quantity = int.tryParse(_quantityController.text);
+                    final quantityValid = quantity != null && quantity > 0;
+                    setState(() => _showQuantityError = !quantityValid);
+                    if (_foodTypeController.text.isNotEmpty &&
+                        _locationController.text.isNotEmpty &&
+                        quantityValid) {
+                      await widget.onSubmit(
+                        _foodTypeController.text,
+                        quantity!,
+                        _locationController.text,
+                        _lat,
+                        _lng,
+                      );
+                      if (context.mounted) Navigator.pop(context);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _donorGreen,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Post Food',
+                    style: TextStyle(fontSize: 16),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

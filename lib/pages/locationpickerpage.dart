@@ -1,11 +1,19 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' hide Position;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class PickedLocation {
   final double latitude;
   final double longitude;
-  PickedLocation({required this.latitude, required this.longitude});
+  final String? address;
+  PickedLocation({
+    required this.latitude,
+    required this.longitude,
+    this.address,
+  });
 }
 
 class LocationPickerPage extends StatefulWidget {
@@ -122,14 +130,40 @@ class _LocationPickerPageState extends State<LocationPickerPage> {
     );
   }
 
-  void _confirmLocation() {
+  Future<void> _confirmLocation() async {
     if (centerPosition == null) return;
+    final lat = centerPosition!.lat.toDouble();
+    final lng = centerPosition!.lng.toDouble();
+
+    setState(() {
+      isLoading = true;
+      locationNote = null;
+    });
+
+    final address = await _reverseGeocode(lat, lng);
+
+    if (!mounted) return;
     Navigator.pop(
       context,
-      PickedLocation(
-        latitude: centerPosition!.lat.toDouble(),
-        longitude: centerPosition!.lng.toDouble(),
-      ),
+      PickedLocation(latitude: lat, longitude: lng, address: address),
     );
+  }
+
+  Future<String?> _reverseGeocode(double lat, double lng) async {
+    try {
+      final token = dotenv.get('MAPBOX_ACCESS_TOKEN');
+      final uri = Uri.parse(
+        'https://api.mapbox.com/geocoding/v5/mapbox.places/$lng,$lat.json'
+        '?access_token=$token&limit=1',
+      );
+      final response = await http.get(uri);
+      if (response.statusCode != 200) return null;
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      final features = data['features'] as List?;
+      if (features == null || features.isEmpty) return null;
+      return features.first['place_name'] as String?;
+    } catch (_) {
+      return null;
+    }
   }
 }

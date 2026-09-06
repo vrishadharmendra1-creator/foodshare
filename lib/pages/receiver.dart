@@ -21,6 +21,12 @@ class _ReceiverPageState extends State<ReceiverPage>
   final _db = FirebaseFirestore.instance;
   late final TabController _tabController;
 
+  static const double _nearbyRadiusKm = 15;
+
+  double? _userLat;
+  double? _userLng;
+  bool _locationLoading = true;
+
   String get _uid => FirebaseAuth.instance.currentUser!.uid;
   String get _email => FirebaseAuth.instance.currentUser?.email ?? '';
 
@@ -28,6 +34,7 @@ class _ReceiverPageState extends State<ReceiverPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _loadUserLocation();
   }
 
   @override
@@ -36,12 +43,59 @@ class _ReceiverPageState extends State<ReceiverPage>
     super.dispose();
   }
 
+  Future<void> _loadUserLocation() async {
+    final ok = await _setupPositionTracking();
+    if (!ok) {
+      if (mounted) setState(() => _locationLoading = false);
+      return;
+    }
+    try {
+      final pos = await Geolocator.getCurrentPosition();
+      if (mounted) {
+        setState(() {
+          _userLat = pos.latitude;
+          _userLng = pos.longitude;
+          _locationLoading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _locationLoading = false);
+    }
+  }
+
+  Future<bool> _setupPositionTracking() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return false;
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    return permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse;
+  }
+
   Stream<List<FoodPost>> get _nearbyStream => _db
       .collection('posts')
       .where('status', isEqualTo: 'available')
       .snapshots()
       .map((snap) {
-        final posts = snap.docs.map((d) => FoodPost.fromDoc(d)).toList();
+        var posts = snap.docs.map((d) => FoodPost.fromDoc(d)).toList();
+        if (_userLat != null && _userLng != null) {
+          posts = posts.where((p) {
+            // Keep posts with no coordinates on file rather than hiding
+            // them -- we simply can't tell how far away they are.
+            if (p.latitude == null || p.longitude == null) return true;
+            final km =
+                Geolocator.distanceBetween(
+                  _userLat!,
+                  _userLng!,
+                  p.latitude!,
+                  p.longitude!,
+                ) /
+                1000;
+            return km <= _nearbyRadiusKm;
+          }).toList();
+        }
         posts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
         return posts;
       });
@@ -226,6 +280,10 @@ class _ReceiverPageState extends State<ReceiverPage>
                     stream: _nearbyStream,
                     onAccept: _acceptPickup,
                     onDirections: _openDirections,
+                    userLat: _userLat,
+                    userLng: _userLng,
+                    locationLoading: _locationLoading,
+                    radiusKm: _nearbyRadiusKm,
                   ),
                   _MyPickupsTab(
                     stream: _myPostsStream,
@@ -364,12 +422,39 @@ class _NearbyDonationsTab extends StatelessWidget {
   final Stream<List<FoodPost>> stream;
   final Future<void> Function(FoodPost) onAccept;
   final Future<void> Function(FoodPost) onDirections;
+  final double? userLat;
+  final double? userLng;
+  final bool locationLoading;
+  final double radiusKm;
 
   const _NearbyDonationsTab({
     required this.stream,
     required this.onAccept,
     required this.onDirections,
+    required this.userLat,
+    required this.userLng,
+    required this.locationLoading,
+    required this.radiusKm,
   });
+
+  String? _distanceLabel(FoodPost post) {
+    if (userLat == null ||
+        userLng == null ||
+        post.latitude == null ||
+        post.longitude == null) {
+      return null;
+    }
+    final km =
+        Geolocator.distanceBetween(
+          userLat!,
+          userLng!,
+          post.latitude!,
+          post.longitude!,
+        ) /
+        1000;
+    if (km < 0.1) return 'Very close';
+    return '${km.toStringAsFixed(1)} km away';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -383,25 +468,49 @@ class _NearbyDonationsTab extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
         final posts = snapshot.data!;
+        final showLocationNotice = userLat == null && !locationLoading;
+
         if (posts.isEmpty) {
-          return const _EmptyState(
-            message: 'No nearby donations right now. Check back soon!',
+          return _EmptyState(
+            message: showLocationNotice
+                ? 'No nearby donations right now. Enable location access '
+                      'to see donations within ${radiusKm.toStringAsFixed(0)} km.'
+                : 'No donations within ${radiusKm.toStringAsFixed(0)} km right now. '
+                      'Check back soon!',
           );
         }
-        return ListView.builder(
+        return ListView(
           padding: const EdgeInsets.all(16),
-          itemCount: posts.length,
-          itemBuilder: (context, i) {
-            final post = posts[i];
-            return _DonationCard(
-              post: post,
-              badgeLabel: 'Available',
-              badgeColor: Colors.green,
-              primaryLabel: 'Accept Pickup',
-              onPrimary: () => onAccept(post),
-              onDirections: () => onDirections(post),
-            );
-          },
+          children: [
+            if (showLocationNotice)
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'Location access is off, so these aren\'t filtered by '
+                  'distance yet.',
+                  style: TextStyle(fontSize: 12, color: Colors.orange[800]),
+                ),
+              ),
+            ...posts.map(
+              (post) => _DonationCard(
+                post: post,
+                badgeLabel: 'Available',
+                badgeColor: Colors.green,
+                primaryLabel: 'Accept Pickup',
+                onPrimary: () => onAccept(post),
+                onDirections: () => onDirections(post),
+                distanceLabel: _distanceLabel(post),
+              ),
+            ),
+          ],
         );
       },
     );
@@ -573,6 +682,7 @@ class _DonationCard extends StatelessWidget {
   final VoidCallback? onDirections;
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
+  final String? distanceLabel;
 
   const _DonationCard({
     required this.post,
@@ -583,6 +693,7 @@ class _DonationCard extends StatelessWidget {
     required this.onDirections,
     this.secondaryLabel,
     this.onSecondary,
+    this.distanceLabel,
   });
 
   @override
@@ -649,6 +760,22 @@ class _DonationCard extends StatelessWidget {
               ),
             ],
           ),
+          if (distanceLabel != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const SizedBox(width: 22),
+                Text(
+                  distanceLabel!,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.green[700],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
           if (post.receiverName != null) ...[
             const SizedBox(height: 6),
             Text(

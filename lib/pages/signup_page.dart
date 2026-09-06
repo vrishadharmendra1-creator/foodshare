@@ -37,49 +37,276 @@ class _SignUpPageState extends State<SignUpPage> {
   }
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sign Up')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'I am a:',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            RadioListTile<String>(
-              title: const Text('Donor'),
-              value: 'donor',
-              groupValue: _selectedRole,
-              onChanged: (value) => setState(() => _selectedRole = value!),
-            ),
-            RadioListTile<String>(
-              title: const Text('Receiver'),
-              value: 'receiver',
-              groupValue: _selectedRole,
-              onChanged: (value) => setState(() => _selectedRole = value!),
-            ),
-            const SizedBox(height: 16),
-            if (_errorMessage != null)
-              Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
-            _isLoading
-                ? const CircularProgressIndicator()
-                : ElevatedButton(
-                    onPressed: _handleSignUp,
-                    child: const Text('Sign Up'),
-                  ),
-          ],
+      backgroundColor: const Color(0xFFF8F9F7),
+      appBar: AppBar(
+        title: const Text(
+          'Create Account',
+          style: TextStyle(fontWeight: FontWeight.w600),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: const Color(0xFF222222),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            children: [
+              const SizedBox(height: 15),
+
+              // Logo
+              Container(
+                width: 90,
+                height: 90,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Image.asset(
+                  "assets/images/logo.png",
+                  fit: BoxFit.contain,
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              const Text(
+                'Join FoodShare',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF222222),
+                ),
+              ),
+
+              const SizedBox(height: 8),
+
+              const Text(
+                'Create an account and help make a difference.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Color(0xFF777777),
+                  height: 1.5,
+                ),
+              ),
+
+              const SizedBox(height: 28),
+
+              // Sign Up Card
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 25,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: 'Email',
+                        hintText: 'Enter your email',
+                        prefixIcon: const Icon(Icons.email_outlined),
+                        filled: true,
+                        fillColor: const Color(0xFFF7F7F7),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF4CAF50),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: _passwordController,
+                      obscureText: true,
+                      decoration: InputDecoration(
+                        labelText: 'Password',
+                        hintText: 'Create a password',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        filled: true,
+                        fillColor: const Color(0xFFF7F7F7),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF4CAF50),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 25),
+
+                    const Text(
+                      'I am a:',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF333333),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Donor
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _selectedRole == 'donor'
+                            ? const Color(0xFFEAF6EA)
+                            : const Color(0xFFF7F7F7),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _selectedRole == 'donor'
+                              ? const Color(0xFF4CAF50)
+                              : Colors.transparent,
+                        ),
+                      ),
+                      child: RadioListTile<String>(
+                        title: const Text(
+                          'Donor',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: const Text(
+                          'I want to share surplus food',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        value: 'donor',
+                        groupValue: _selectedRole,
+                        activeColor: const Color(0xFF4CAF50),
+                        onChanged: (value) =>
+                            setState(() => _selectedRole = value!),
+                      ),
+                    ),
+
+                    const SizedBox(height: 10),
+
+                    // Receiver
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _selectedRole == 'receiver'
+                            ? const Color(0xFFEAF6EA)
+                            : const Color(0xFFF7F7F7),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: _selectedRole == 'receiver'
+                              ? const Color(0xFF4CAF50)
+                              : Colors.transparent,
+                        ),
+                      ),
+                      child: RadioListTile<String>(
+                        title: const Text(
+                          'Receiver',
+                          style: TextStyle(fontWeight: FontWeight.w500),
+                        ),
+                        subtitle: const Text(
+                          'I need or distribute food',
+                          style: TextStyle(fontSize: 12),
+                        ),
+                        value: 'receiver',
+                        groupValue: _selectedRole,
+                        activeColor: const Color(0xFF4CAF50),
+                        onChanged: (value) =>
+                            setState(() => _selectedRole = value!),
+                      ),
+                    ),
+
+                    const SizedBox(height: 22),
+
+                    if (_errorMessage != null)
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          _errorMessage!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: _isLoading
+                          ? const Center(
+                              child: CircularProgressIndicator(
+                                color: Color(0xFF4CAF50),
+                              ),
+                            )
+                          : ElevatedButton(
+                              onPressed: _handleSignUp,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF4CAF50),
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: const Text(
+                                'Create Account',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
