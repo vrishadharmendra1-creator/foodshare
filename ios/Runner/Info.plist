@@ -2,6 +2,26 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+
+<key>GIDClientID</key>
+<string>105555815297-16rnuqesmvpi305nvagabo7ba3n859cs.apps.googleusercontent.com</string>
+<!-- TODO Replace this value: -->		
+<!-- Put me in the [my_project]/ios/Runner/Info.plist file -->
+<!-- Google Sign-in Section -->
+<key>CFBundleURLTypes</key>
+<array>
+	<dict>
+		<key>CFBundleTypeRole</key>
+		<string>Editor</string>
+		<key>CFBundleURLSchemes</key>
+		<array>
+			<!-- TODO Replace this value: -->
+			<!-- Copied from GoogleService-Info.plist key REVERSED_CLIENT_ID -->
+			<string>com.googleusercontent.apps.105555815297-16rnuqesmvpi305nvagabo7ba3n859cs</string>
+		</array>
+	</dict>
+</array>
+<!-- End of the Google Sign-in Section -->
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

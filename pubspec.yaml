@@ -18,6 +18,7 @@ dependencies:
   flutter_dotenv: ^6.0.1
   url_launcher: ^6.3.0
   http: ^1.2.0  
+  google_sign_in: ^7.2.0
   
 
 dev_dependencies:
@@ -28,3 +29,4 @@ flutter:
   assets:
     - .env
     - assets/images/logo.png
+    - assets/images/google_logo.png

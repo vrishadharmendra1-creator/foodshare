@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 enum PostStatus { available, accepted, pickedUp, completed }
 
@@ -18,10 +19,24 @@ PostStatus postStatusFromString(String value) {
 
 String postStatusToString(PostStatus status) => status.name;
 
+/// Opens the phone dialer for [phoneNumber]. Shared by both the donor
+/// and receiver cards so "Call" always behaves the same way.
+Future<void> launchPhoneDialer(BuildContext context, String phoneNumber) async {
+  final uri = Uri(scheme: 'tel', path: phoneNumber);
+  if (await canLaunchUrl(uri)) {
+    await launchUrl(uri);
+  } else if (context.mounted) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Could not open dialer')));
+  }
+}
+
 class FoodPost {
   final String? id;
   final String donorId;
   final String donorEmail;
+  final String? donorPhone;
   final String name;
   final int quantity;
   final String location;
@@ -31,11 +46,13 @@ class FoodPost {
   final PostStatus status;
   final String? receiverId;
   final String? receiverName;
+  final String? receiverPhone;
 
   FoodPost({
     this.id,
     required this.donorId,
     required this.donorEmail,
+    this.donorPhone,
     required this.name,
     required this.quantity,
     required this.location,
@@ -45,6 +62,7 @@ class FoodPost {
     this.status = PostStatus.available,
     this.receiverId,
     this.receiverName,
+    this.receiverPhone,
   });
 
   factory FoodPost.fromDoc(DocumentSnapshot doc) {
@@ -53,6 +71,7 @@ class FoodPost {
       id: doc.id,
       donorId: json['donorId'] ?? '',
       donorEmail: json['donorEmail'] ?? '',
+      donorPhone: json['donorPhone'],
       name: json['name'] ?? '',
       quantity: json['quantity'] ?? 0,
       location: json['location'] ?? '',
@@ -62,6 +81,7 @@ class FoodPost {
       status: postStatusFromString(json['status'] ?? 'available'),
       receiverId: json['receiverId'],
       receiverName: json['receiverName'],
+      receiverPhone: json['receiverPhone'],
     );
   }
 
@@ -69,6 +89,7 @@ class FoodPost {
     return {
       'donorId': donorId,
       'donorEmail': donorEmail,
+      'donorPhone': donorPhone,
       'name': name,
       'quantity': quantity,
       'location': location,
@@ -78,6 +99,7 @@ class FoodPost {
       'status': postStatusToString(status),
       'receiverId': receiverId,
       'receiverName': receiverName,
+      'receiverPhone': receiverPhone,
     };
   }
 }
@@ -88,12 +110,20 @@ class FoodPostCard extends StatelessWidget {
   final VoidCallback? onAction;
   final VoidCallback? onDelete;
 
+  /// Phone number to show a "Call" button for -- pass the receiver's
+  /// phone on a donor's card once someone has accepted the pickup, or
+  /// the donor's phone on a receiver's card.
+  final String? callablePhone;
+  final String? callableLabel;
+
   const FoodPostCard({
     super.key,
     required this.post,
     this.actionLabel,
     this.onAction,
     this.onDelete,
+    this.callablePhone,
+    this.callableLabel,
   });
 
   @override
@@ -177,6 +207,24 @@ class FoodPostCard extends StatelessWidget {
                   ),
                 ),
                 child: Text(actionLabel!),
+              ),
+            ),
+          ],
+          if (callablePhone != null && callablePhone!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => launchPhoneDialer(context, callablePhone!),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.blue[700],
+                  side: BorderSide(color: Colors.blue[200]!),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.call, size: 18),
+                label: Text(callableLabel ?? 'Call'),
               ),
             ),
           ],

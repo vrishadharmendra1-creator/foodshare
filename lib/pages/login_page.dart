@@ -35,6 +35,21 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.signInWithGoogle();
+    } catch (e) {
+      setState(() => _errorMessage = AuthService.friendlyAuthError(e));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -63,7 +78,6 @@ class _LoginPageState extends State<LoginPage> {
             children: [
               const SizedBox(height: 20),
 
-              // Logo
               Container(
                 width: 110,
                 height: 110,
@@ -110,7 +124,6 @@ class _LoginPageState extends State<LoginPage> {
 
               const SizedBox(height: 32),
 
-              // Login Card
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -222,6 +235,52 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ),
                             ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'or',
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                      ],
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        onPressed: _isLoading ? null : _handleGoogleSignIn,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: Image.asset(
+                          'assets/images/google_logo.png',
+                          height: 20,
+                        ),
+                        label: const Text(
+                          'Continue with Google',
+                          style: TextStyle(
+                            color: Color(0xFF222222),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),

@@ -17,7 +17,12 @@ class DonorPage extends StatefulWidget {
 class _DonorPageState extends State<DonorPage>
     with SingleTickerProviderStateMixin {
   final _db = FirebaseFirestore.instance;
+  final _authService = AuthService();
   late final TabController _tabController;
+
+  // Cached once on load so we don't re-fetch it from Firestore on every
+  // post creation -- it's stamped onto each post so receivers can call.
+  String? _donorPhone;
 
   String get _uid => FirebaseAuth.instance.currentUser!.uid;
   String get _email => FirebaseAuth.instance.currentUser?.email ?? '';
@@ -26,6 +31,12 @@ class _DonorPageState extends State<DonorPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _loadDonorPhone();
+  }
+
+  Future<void> _loadDonorPhone() async {
+    final phone = await _authService.getUserPhone(_uid);
+    if (mounted) setState(() => _donorPhone = phone);
   }
 
   @override
@@ -51,6 +62,7 @@ class _DonorPageState extends State<DonorPage>
     await _db.collection('posts').add({
       'donorId': _uid,
       'donorEmail': _email,
+      'donorPhone': _donorPhone,
       'name': name,
       'quantity': quantity,
       'location': locationText,
@@ -60,6 +72,7 @@ class _DonorPageState extends State<DonorPage>
       'status': 'available',
       'receiverId': null,
       'receiverName': null,
+      'receiverPhone': null,
     });
   }
 
@@ -405,11 +418,19 @@ class _MyDonationsTab extends StatelessWidget {
         final canMarkPickedUp =
             post.status == PostStatus.available ||
             post.status == PostStatus.accepted;
+        // A receiver has claimed this post -- let the donor call them
+        // directly to sort out pickup timing/logistics.
+        final hasReceiverToCall =
+            post.status != PostStatus.available &&
+            post.receiverPhone != null &&
+            post.receiverPhone!.isNotEmpty;
         return FoodPostCard(
           post: post,
           actionLabel: canMarkPickedUp ? 'Mark as Picked Up' : null,
           onAction: canMarkPickedUp ? () => onMarkPickedUp(post) : null,
           onDelete: () => onDelete(post),
+          callablePhone: hasReceiverToCall ? post.receiverPhone : null,
+          callableLabel: 'Call Receiver',
         );
       },
     );

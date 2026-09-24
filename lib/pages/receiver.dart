@@ -19,6 +19,7 @@ class ReceiverPage extends StatefulWidget {
 class _ReceiverPageState extends State<ReceiverPage>
     with SingleTickerProviderStateMixin {
   final _db = FirebaseFirestore.instance;
+  final _authService = AuthService();
   late final TabController _tabController;
 
   static const double _nearbyRadiusKm = 15;
@@ -26,6 +27,10 @@ class _ReceiverPageState extends State<ReceiverPage>
   double? _userLat;
   double? _userLng;
   bool _locationLoading = true;
+
+  // Cached once on load and stamped onto each accepted pickup so the
+  // donor has a number to call.
+  String? _receiverPhone;
 
   String get _uid => FirebaseAuth.instance.currentUser!.uid;
   String get _email => FirebaseAuth.instance.currentUser?.email ?? '';
@@ -35,6 +40,12 @@ class _ReceiverPageState extends State<ReceiverPage>
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _loadUserLocation();
+    _loadReceiverPhone();
+  }
+
+  Future<void> _loadReceiverPhone() async {
+    final phone = await _authService.getUserPhone(_uid);
+    if (mounted) setState(() => _receiverPhone = phone);
   }
 
   @override
@@ -126,6 +137,7 @@ class _ReceiverPageState extends State<ReceiverPage>
           'status': 'accepted',
           'receiverId': _uid,
           'receiverName': _email,
+          'receiverPhone': _receiverPhone,
         });
       });
     } catch (e) {
@@ -151,6 +163,7 @@ class _ReceiverPageState extends State<ReceiverPage>
           'status': 'available',
           'receiverId': null,
           'receiverName': null,
+          'receiverPhone': null,
         });
       });
     } catch (e) {
@@ -508,6 +521,9 @@ class _NearbyDonationsTab extends StatelessWidget {
                 onPrimary: () => onAccept(post),
                 onDirections: () => onDirections(post),
                 distanceLabel: _distanceLabel(post),
+                // No phone number here: a donation is still unclaimed on
+                // this tab, so the donor's number stays hidden until a
+                // receiver actually accepts the pickup (see My Pickups).
               ),
             ),
           ],
@@ -561,6 +577,8 @@ class _MyPickupsTab extends StatelessWidget {
               onDirections: null,
               secondaryLabel: 'Cancel Pickup',
               onSecondary: () => _confirmCancel(context, post),
+              phoneNumber: post.donorPhone,
+              phoneLabel: 'Call Donor',
             );
           },
         );
@@ -683,6 +701,8 @@ class _DonationCard extends StatelessWidget {
   final String? secondaryLabel;
   final VoidCallback? onSecondary;
   final String? distanceLabel;
+  final String? phoneNumber;
+  final String? phoneLabel;
 
   const _DonationCard({
     required this.post,
@@ -694,6 +714,8 @@ class _DonationCard extends StatelessWidget {
     this.secondaryLabel,
     this.onSecondary,
     this.distanceLabel,
+    this.phoneNumber,
+    this.phoneLabel,
   });
 
   @override
@@ -838,6 +860,24 @@ class _DonationCard extends StatelessWidget {
                 ),
               ),
             ],
+          ],
+          if (phoneNumber != null && phoneNumber!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => launchPhoneDialer(context, phoneNumber!),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.blue[700],
+                  side: BorderSide(color: Colors.blue[200]!),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                icon: const Icon(Icons.call, size: 18),
+                label: Text(phoneLabel ?? 'Call'),
+              ),
+            ),
           ],
         ],
       ),

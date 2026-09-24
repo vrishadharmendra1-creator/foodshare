@@ -12,12 +12,33 @@ class _SignUpPageState extends State<SignUpPage> {
   final _authService = AuthService();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _phoneController = TextEditingController();
 
   String _selectedRole = 'donor';
   bool _isLoading = false;
   String? _errorMessage;
 
+  // Accepts things like "+1 555-123-4567", "5551234567", "(555) 123 4567".
+  // Keeps validation forgiving about formatting but still catches empty /
+  // obviously-not-a-phone-number input before it hits Firestore.
+  static final RegExp _phonePattern = RegExp(r'^\+?[0-9\s\-\(\)]{7,15}$');
+
+  String? _validatePhone() {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) return 'Please enter a phone number.';
+    if (!_phonePattern.hasMatch(phone)) {
+      return 'Enter a valid phone number.';
+    }
+    return null;
+  }
+
   Future<void> _handleSignUp() async {
+    final phoneError = _validatePhone();
+    if (phoneError != null) {
+      setState(() => _errorMessage = phoneError);
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -28,6 +49,34 @@ class _SignUpPageState extends State<SignUpPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
         role: _selectedRole,
+        phoneNumber: _phoneController.text.trim(),
+      );
+    } catch (e) {
+      setState(() => _errorMessage = AuthService.friendlyAuthError(e));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _handleGoogleSignUp() async {
+    // Google doesn't hand us a phone number, so we still require one
+    // here -- the role + phone picked on this page travel along with
+    // the Google sign-in and get saved onto the new user doc.
+    final phoneError = _validatePhone();
+    if (phoneError != null) {
+      setState(() => _errorMessage = phoneError);
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await _authService.signInWithGoogle(
+        defaultRole: _selectedRole,
+        phoneNumber: _phoneController.text.trim(),
       );
     } catch (e) {
       setState(() => _errorMessage = AuthService.friendlyAuthError(e));
@@ -40,6 +89,7 @@ class _SignUpPageState extends State<SignUpPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -160,6 +210,35 @@ class _SignUpPageState extends State<SignUpPage> {
                         labelText: 'Password',
                         hintText: 'Create a password',
                         prefixIcon: const Icon(Icons.lock_outline),
+                        filled: true,
+                        fillColor: const Color(0xFFF7F7F7),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF4CAF50),
+                            width: 1.5,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    TextField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Phone number',
+                        hintText: 'e.g. +1 555 123 4567',
+                        prefixIcon: const Icon(Icons.phone_outlined),
+                        helperText:
+                            'Shared with the donor/receiver you\'re matched '
+                            'with, so pickups are easy to coordinate.',
+                        helperMaxLines: 2,
                         filled: true,
                         fillColor: const Color(0xFFF7F7F7),
                         border: OutlineInputBorder(
@@ -299,6 +378,52 @@ class _SignUpPageState extends State<SignUpPage> {
                                 ),
                               ),
                             ),
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'or',
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Expanded(child: Divider(color: Colors.grey.shade300)),
+                      ],
+                    ),
+
+                    const SizedBox(height: 18),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: OutlinedButton.icon(
+                        onPressed: _isLoading ? null : _handleGoogleSignUp,
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.grey.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        icon: Image.asset(
+                          'assets/images/google_logo.png',
+                          height: 20,
+                        ),
+                        label: const Text(
+                          'Sign up with Google',
+                          style: TextStyle(
+                            color: Color(0xFF222222),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
